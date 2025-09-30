@@ -10,8 +10,23 @@ defmodule YlmWeb.HomeLive do
   end
 
   @impl true
-  def handle_event("update_code", %{"code" => code}, socket) do
-    {:noreply, assign(socket, :session_code, code)}
+  def handle_event("update_code", %{"value" => value}, socket) when is_binary(value) do
+    {:noreply, assign(socket, :session_code, value)}
+  end
+
+  @impl true
+  def handle_event("update_code", %{"key" => _key, "value" => value}, socket) do
+    {:noreply, assign(socket, :session_code, value)}
+  end
+
+  @impl true
+  def handle_event("join_session", %{"session_code" => code}, socket) do
+    code = String.trim(code)
+    if String.length(code) > 0 do
+      {:noreply, push_navigate(socket, to: ~p"/join/#{code}")}
+    else
+      {:noreply, put_flash(socket, :error, "Please enter a session code")}
+    end
   end
 
   @impl true
@@ -72,6 +87,7 @@ defmodule YlmWeb.HomeLive do
               <form phx-submit="join_session" class="space-y-4">
                 <input
                   type="text"
+                  name="session_code"
                   value={@session_code}
                   phx-keyup="update_code"
                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-center uppercase font-mono"

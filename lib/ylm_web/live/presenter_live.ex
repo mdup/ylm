@@ -61,6 +61,12 @@ defmodule YlmWeb.PresenterLive do
   end
 
   @impl true
+  def handle_info(_message, socket) do
+    # Ignore other messages (like slide_changed which we already handled locally)
+    {:noreply, socket}
+  end
+
+  @impl true
   def render(assigns) do
     ~H"""
     <div class="min-h-screen bg-gray-100 p-8">

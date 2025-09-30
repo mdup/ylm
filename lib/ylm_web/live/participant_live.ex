@@ -17,7 +17,12 @@ defmodule YlmWeb.ParticipantLive do
   end
 
   @impl true
-  def handle_event("update_name", %{"name" => name}, socket) do
+  def handle_event("update_name", %{"value" => name}, socket) when is_binary(name) do
+    {:noreply, assign(socket, :participant_name, name)}
+  end
+
+  @impl true
+  def handle_event("update_name", %{"key" => _key, "value" => name}, socket) do
     {:noreply, assign(socket, :participant_name, name)}
   end
 
@@ -72,6 +77,12 @@ defmodule YlmWeb.ParticipantLive do
   end
 
   @impl true
+  def handle_info(_message, socket) do
+    # Ignore other messages (like participant_joined which is meant for presenter)
+    {:noreply, socket}
+  end
+
+  @impl true
   def render(assigns) do
     ~H"""
     <div class="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
@@ -85,6 +96,7 @@ defmodule YlmWeb.ParticipantLive do
               </label>
               <input
                 type="text"
+                name="name"
                 value={@participant_name}
                 phx-keyup="update_name"
                 class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
