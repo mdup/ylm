@@ -17,7 +17,9 @@ defmodule YlmWeb.Router do
   scope "/", YlmWeb do
     pipe_through :browser
 
-    get "/", PageController, :home
+    live "/", HomeLive
+    live "/presenter", PresenterLive
+    live "/join/:session_id", ParticipantLive
   end
 
   # Other scopes may use custom stacks.
