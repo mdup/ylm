@@ -1,12 +1,12 @@
 defmodule YlmWeb.PresenterLive do
   use YlmWeb, :live_view
 
-  alias Ylm.Sessions
+  alias Ylm.{Sessions, SessionManager}
   alias Phoenix.PubSub
 
   @impl true
   def mount(_params, _session, socket) do
-    session = Sessions.new_session()
+    session = SessionManager.create_session()
 
     # Subscribe to updates for this session
     PubSub.subscribe(Ylm.PubSub, "session:#{session.id}")
@@ -26,7 +26,7 @@ defmodule YlmWeb.PresenterLive do
       "prev" -> max(1, current_slide - 1)
     end
 
-    updated_session = Sessions.change_slide(socket.assigns.session, new_slide)
+    {:ok, updated_session} = SessionManager.change_slide(socket.assigns.session.id, new_slide)
 
     # Broadcast slide change to all participants
     PubSub.broadcast(Ylm.PubSub, "session:#{updated_session.id}", {:slide_changed, new_slide})
@@ -38,8 +38,9 @@ defmodule YlmWeb.PresenterLive do
   end
 
   @impl true
-  def handle_info({:participant_joined, name, _participant_id}, socket) do
-    {updated_session, _} = Sessions.join_session(socket.assigns.session, name)
+  def handle_info({:participant_joined, _name, _participant_id}, socket) do
+    # Get the updated session from the SessionManager
+    updated_session = SessionManager.get_session(socket.assigns.session.id)
 
     {:noreply,
      socket
@@ -48,16 +49,14 @@ defmodule YlmWeb.PresenterLive do
   end
 
   @impl true
-  def handle_info({:status_updated, participant_id, status}, socket) do
-    case Sessions.update_participant_status(socket.assigns.session, participant_id, status) do
-      {:ok, updated_session} ->
-        {:noreply,
-         socket
-         |> assign(:session, updated_session)
-         |> assign(:participants_by_status, Sessions.get_participants_by_status(updated_session))}
-      _ ->
-        {:noreply, socket}
-    end
+  def handle_info({:status_updated, _participant_id, _status}, socket) do
+    # Get the updated session from the SessionManager
+    updated_session = SessionManager.get_session(socket.assigns.session.id)
+
+    {:noreply,
+     socket
+     |> assign(:session, updated_session)
+     |> assign(:participants_by_status, Sessions.get_participants_by_status(updated_session))}
   end
 
   @impl true

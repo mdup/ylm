@@ -2,6 +2,7 @@ defmodule YlmWeb.ParticipantLive do
   use YlmWeb, :live_view
 
   alias Phoenix.PubSub
+  alias Ylm.SessionManager
 
   @impl true
   def mount(%{"session_id" => session_id}, _session, socket) do
@@ -31,24 +32,28 @@ defmodule YlmWeb.ParticipantLive do
     name = String.trim(socket.assigns.participant_name)
 
     if String.length(name) > 0 do
-      # Subscribe to session updates
-      PubSub.subscribe(Ylm.PubSub, "session:#{socket.assigns.session_id}")
+      # Join the session through SessionManager
+      case SessionManager.join_session(socket.assigns.session_id, name) do
+        {:ok, _updated_session, participant_id} ->
+          # Subscribe to session updates
+          PubSub.subscribe(Ylm.PubSub, "session:#{socket.assigns.session_id}")
 
-      # Generate a participant ID
-      participant_id = System.unique_integer([:positive]) |> Integer.to_string()
+          # Notify presenter of new participant
+          PubSub.broadcast(
+            Ylm.PubSub,
+            "session:#{socket.assigns.session_id}",
+            {:participant_joined, name, participant_id}
+          )
 
-      # Notify presenter of new participant
-      PubSub.broadcast(
-        Ylm.PubSub,
-        "session:#{socket.assigns.session_id}",
-        {:participant_joined, name, participant_id}
-      )
+          {:noreply,
+           socket
+           |> assign(:participant_id, participant_id)
+           |> assign(:joined, true)
+           |> assign(:page_title, "#{name} - YLM")}
 
-      {:noreply,
-       socket
-       |> assign(:participant_id, participant_id)
-       |> assign(:joined, true)
-       |> assign(:page_title, "#{name} - YLM")}
+        {:error, :session_not_found} ->
+          {:noreply, put_flash(socket, :error, "Session not found. Please check the code.")}
+      end
     else
       {:noreply, put_flash(socket, :error, "Please enter your name")}
     end
@@ -58,14 +63,25 @@ defmodule YlmWeb.ParticipantLive do
   def handle_event("set_status", %{"status" => status}, socket) do
     status_atom = String.to_existing_atom(status)
 
-    # Broadcast status update to presenter
-    PubSub.broadcast(
-      Ylm.PubSub,
-      "session:#{socket.assigns.session_id}",
-      {:status_updated, socket.assigns.participant_id, status_atom}
-    )
+    # Update status through SessionManager
+    case SessionManager.update_participant_status(
+      socket.assigns.session_id,
+      socket.assigns.participant_id,
+      status_atom
+    ) do
+      {:ok, _updated_session} ->
+        # Broadcast status update to presenter
+        PubSub.broadcast(
+          Ylm.PubSub,
+          "session:#{socket.assigns.session_id}",
+          {:status_updated, socket.assigns.participant_id, status_atom}
+        )
 
-    {:noreply, assign(socket, :status, status_atom)}
+        {:noreply, assign(socket, :status, status_atom)}
+
+      _ ->
+        {:noreply, socket}
+    end
   end
 
   @impl true

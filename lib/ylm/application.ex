@@ -12,8 +12,8 @@ defmodule Ylm.Application do
       Ylm.Repo,
       {DNSCluster, query: Application.get_env(:ylm, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: Ylm.PubSub},
-      # Start a worker by calling: Ylm.Worker.start_link(arg)
-      # {Ylm.Worker, arg},
+      # Start the session manager
+      Ylm.SessionManager,
       # Start to serve requests, typically the last entry
       YlmWeb.Endpoint
     ]
