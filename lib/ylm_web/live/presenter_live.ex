@@ -77,15 +77,36 @@ defmodule YlmWeb.PresenterLive do
 
   # Helper function to generate QR code as data URI
   defp generate_qr_code(url) do
-    case QRCode.create(url) do
-      {:ok, qr_code} ->
-        case QRCode.render(qr_code) do
-          {:ok, svg} ->
-            "data:image/svg+xml;base64,#{Base.encode64(svg)}"
-          _ ->
-            nil
-        end
-      _ ->
+    require Logger
+    Logger.info("Attempting to generate QR code for URL: #{url}")
+
+    try do
+      # Use the pipeline approach like in the documentation
+      result = url
+      |> QRCode.create()
+      |> QRCode.render()
+
+      Logger.info("Pipeline result type: #{inspect(elem(result, 0))}")
+
+      # The result is {:ok, svg_string}
+      case result do
+        {:ok, svg_content} when is_binary(svg_content) ->
+          Logger.info("Successfully got SVG content, length: #{String.length(svg_content)}")
+          data_uri = "data:image/svg+xml;base64,#{Base.encode64(svg_content)}"
+          Logger.info("Data URI created, total length: #{String.length(data_uri)}")
+          data_uri
+
+        {:error, reason} ->
+          Logger.error("QR code generation failed: #{inspect(reason)}")
+          nil
+
+        other ->
+          Logger.error("Unexpected result format: #{inspect(other)}")
+          nil
+      end
+    rescue
+      exception ->
+        Logger.error("Exception generating QR code: #{inspect(exception)}")
         nil
     end
   end
@@ -135,6 +156,12 @@ defmodule YlmWeb.PresenterLive do
                 <div class="bg-white p-4 rounded-lg shadow-md">
                   <img src={qr_code_data} alt="QR Code for join URL" class="w-32 h-32" />
                   <p class="text-xs text-gray-500 text-center mt-2">Scan to join</p>
+                </div>
+              </div>
+            <% else %>
+              <div class="mt-4 flex justify-center">
+                <div class="bg-red-100 p-4 rounded-lg">
+                  <p class="text-xs text-red-500 text-center">QR code failed to generate</p>
                 </div>
               </div>
             <% end %>
