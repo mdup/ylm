@@ -12,8 +12,8 @@ defmodule YlmWeb.Endpoint do
   ]
 
   socket "/live", Phoenix.LiveView.Socket,
-    websocket: [connect_info: [session: @session_options]],
-    longpoll: [connect_info: [session: @session_options]]
+    websocket: [connect_info: [session: @session_options], timeout: 5_000],
+    longpoll: [connect_info: [session: @session_options], window_ms: 5_000]
 
   # Serve at "/" the static files from "priv/static" directory.
   #

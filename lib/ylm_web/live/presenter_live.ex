@@ -6,13 +6,17 @@ defmodule YlmWeb.PresenterLive do
 
   @impl true
   def mount(_params, _session, socket) do
+    require Logger
     session = SessionManager.create_session()
 
     # Subscribe to updates for this session
     PubSub.subscribe(Ylm.PubSub, "session:#{session.id}")
 
-    # Register this presenter process so SessionManager can monitor it
-    SessionManager.register_presenter(session.id, self())
+    # Track presenter presence - this will automatically be removed when process dies
+    presence_result = YlmWeb.Presence.track(self(), "session:#{session.id}", "presenter", %{
+      online_at: System.system_time(:second)
+    })
+    Logger.info("Presenter presence tracked for session #{session.id}: #{inspect(presence_result)}")
 
     {:ok,
      socket
@@ -73,6 +77,21 @@ defmodule YlmWeb.PresenterLive do
      socket
      |> assign(:session, updated_session)
      |> assign(:participants_by_status, Sessions.get_participants_by_status(updated_session))}
+  end
+
+  @impl true
+  def terminate(_reason, socket) do
+    require Logger
+    Logger.info("Presenter terminating for session #{socket.assigns.session.id}")
+
+    # Immediately broadcast to participants
+    PubSub.broadcast(
+      Ylm.PubSub,
+      "session:#{socket.assigns.session.id}",
+      :presenter_disconnected
+    )
+
+    :ok
   end
 
   @impl true

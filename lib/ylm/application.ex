@@ -12,6 +12,8 @@ defmodule Ylm.Application do
       Ylm.Repo,
       {DNSCluster, query: Application.get_env(:ylm, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: Ylm.PubSub},
+      # Start presence tracking
+      YlmWeb.Presence,
       # Start the session manager
       Ylm.SessionManager,
       # Start to serve requests, typically the last entry

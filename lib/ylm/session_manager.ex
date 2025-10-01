@@ -154,8 +154,10 @@ defmodule Ylm.SessionManager do
 
   @impl true
   def handle_call({:register_presenter, session_id, presenter_pid}, _from, state) do
+    require Logger
     # Monitor the presenter process
     ref = Process.monitor(presenter_pid)
+    Logger.info("Registered presenter for session #{session_id}, monitor ref: #{inspect(ref)}")
 
     # Ensure presenter_monitors map exists (for backward compatibility)
     presenter_monitors = Map.get(state, :presenter_monitors, %{})
@@ -178,9 +180,13 @@ defmodule Ylm.SessionManager do
         {:noreply, state}
 
       session_id ->
+        require Logger
+        Logger.info("Presenter disconnected for session #{session_id}, broadcasting to participants")
+
         # Presenter disconnected - mark session and broadcast
         case get_in(state, [:sessions, session_id]) do
           nil ->
+            Logger.warning("Session #{session_id} not found when presenter disconnected")
             # Clean up monitor ref
             updated_monitors = Map.delete(presenter_monitors, ref)
             updated_state = Map.put(state, :presenter_monitors, updated_monitors)
@@ -191,11 +197,12 @@ defmodule Ylm.SessionManager do
             updated_session = Sessions.mark_presenter_disconnected(session)
 
             # Broadcast to participants
-            Phoenix.PubSub.broadcast(
+            result = Phoenix.PubSub.broadcast(
               Ylm.PubSub,
               "session:#{session_id}",
               :presenter_disconnected
             )
+            Logger.info("Broadcast result: #{inspect(result)}")
 
             # Update state
             updated_monitors = Map.delete(presenter_monitors, ref)
