@@ -77,36 +77,16 @@ defmodule YlmWeb.PresenterLive do
 
   # Helper function to generate QR code as data URI
   defp generate_qr_code(url) do
-    require Logger
-    Logger.info("Attempting to generate QR code for URL: #{url}")
-
     try do
-      # Use the pipeline approach like in the documentation
-      result = url
-      |> QRCode.create()
-      |> QRCode.render()
-
-      Logger.info("Pipeline result type: #{inspect(elem(result, 0))}")
-
-      # The result is {:ok, svg_string}
-      case result do
+      # Use the pipeline approach to generate SVG QR code
+      case url |> QRCode.create() |> QRCode.render() do
         {:ok, svg_content} when is_binary(svg_content) ->
-          Logger.info("Successfully got SVG content, length: #{String.length(svg_content)}")
-          data_uri = "data:image/svg+xml;base64,#{Base.encode64(svg_content)}"
-          Logger.info("Data URI created, total length: #{String.length(data_uri)}")
-          data_uri
-
-        {:error, reason} ->
-          Logger.error("QR code generation failed: #{inspect(reason)}")
-          nil
-
-        other ->
-          Logger.error("Unexpected result format: #{inspect(other)}")
+          "data:image/svg+xml;base64,#{Base.encode64(svg_content)}"
+        _ ->
           nil
       end
     rescue
-      exception ->
-        Logger.error("Exception generating QR code: #{inspect(exception)}")
+      _ ->
         nil
     end
   end
@@ -116,7 +96,21 @@ defmodule YlmWeb.PresenterLive do
     ~H"""
     <div class="min-h-screen bg-gray-100 p-8">
       <div class="max-w-7xl mx-auto">
-        <div class="bg-white rounded-lg shadow-lg p-8 mb-8">
+        <div class="bg-white rounded-lg shadow-lg p-8 mb-8 relative">
+          <!-- QR Code positioned absolutely in top-right, hidden on small screens -->
+          <%
+            join_url = "#{YlmWeb.Endpoint.url()}/join/#{@session.id}"
+            qr_code_data = generate_qr_code(join_url)
+          %>
+          <%= if qr_code_data do %>
+            <div class="hidden md:flex absolute top-1/2 right-4 -translate-y-1/2 z-10">
+              <div class="bg-white p-3 rounded-lg">
+                <img src={qr_code_data} alt="QR Code for join URL" class="w-24 h-24" />
+                <p class="text-xs font-mono font-bold text-center mt-1"><%= @session.id %></p>
+              </div>
+            </div>
+          <% end %>
+
           <div class="text-center">
             <h1 class="text-6xl font-bold text-gray-800 mb-4">
               Slide <%= @session.current_slide %>
@@ -138,28 +132,26 @@ defmodule YlmWeb.PresenterLive do
                 Next →
               </button>
             </div>
-            <div class="text-sm text-gray-600">
+            <!-- Only show session code line when QR code is not visible -->
+            <div class="text-sm text-gray-600 md:hidden">
               Session Code: <span class="font-mono font-bold text-lg"><%= @session.id %></span>
               <br>
+            </div>
+            <div class="text-sm text-gray-600">
               Join URL: <span class="font-mono text-sm text-blue-600">
                 <%= YlmWeb.Endpoint.url() %>/join/<%= @session.id %>
               </span>
             </div>
 
-            <!-- QR Code for Join URL -->
-            <%
-              join_url = "#{YlmWeb.Endpoint.url()}/join/#{@session.id}"
-              qr_code_data = generate_qr_code(join_url)
-            %>
+            <!-- QR Code fallback for small screens - in main flow -->
             <%= if qr_code_data do %>
-              <div class="mt-4 flex justify-center">
-                <div class="bg-white p-4 rounded-lg shadow-md">
+              <div class="md:hidden mt-4 flex justify-center">
+                <div class="bg-white p-4 rounded-lg">
                   <img src={qr_code_data} alt="QR Code for join URL" class="w-32 h-32" />
-                  <p class="text-xs text-gray-500 text-center mt-2">Scan to join</p>
                 </div>
               </div>
             <% else %>
-              <div class="mt-4 flex justify-center">
+              <div class="md:hidden mt-4 flex justify-center">
                 <div class="bg-red-100 p-4 rounded-lg">
                   <p class="text-xs text-red-500 text-center">QR code failed to generate</p>
                 </div>
