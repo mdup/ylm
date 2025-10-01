@@ -36,6 +36,10 @@ defmodule Ylm.SessionManager do
     GenServer.call(__MODULE__, {:change_slide, session_id, slide_number})
   end
 
+  def add_message(session_id, participant_id, content) do
+    GenServer.call(__MODULE__, {:add_message, session_id, participant_id, content})
+  end
+
   # Server Callbacks
 
   @impl true
@@ -109,6 +113,22 @@ defmodule Ylm.SessionManager do
         updated_session = Sessions.change_slide(session, slide_number)
         updated_state = put_in(state, [:sessions, session_id], updated_session)
         {:reply, {:ok, updated_session}, updated_state}
+    end
+  end
+
+  @impl true
+  def handle_call({:add_message, session_id, participant_id, content}, _from, state) do
+    case get_in(state, [:sessions, session_id]) do
+      nil ->
+        {:reply, {:error, :session_not_found}, state}
+      session ->
+        case Sessions.add_message(session, participant_id, content) do
+          {:ok, updated_session} ->
+            updated_state = put_in(state, [:sessions, session_id], updated_session)
+            {:reply, {:ok, updated_session}, updated_state}
+          error ->
+            {:reply, error, state}
+        end
     end
   end
 end

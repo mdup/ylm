@@ -9,7 +9,8 @@ defmodule Ylm.Sessions do
     %Session{
       id: generate_session_id(),
       current_slide: 1,
-      participants: %{}
+      participants: %{},
+      messages: []
     }
   end
 
@@ -73,6 +74,36 @@ defmodule Ylm.Sessions do
     %{understand: understand, lost: lost}
   end
 
+  def add_message(session, participant_id, content) do
+    case Map.get(session.participants, participant_id) do
+      nil ->
+        {:error, :participant_not_found}
+      participant ->
+        message = %{
+          id: generate_message_id(),
+          participant_name: participant.name,
+          content: String.trim(content),
+          timestamp: DateTime.utc_now()
+        }
+
+        # Handle sessions that don't have messages field (migration compatibility)
+        current_messages = Map.get(session, :messages, [])
+
+        # Keep only the last 50 messages to prevent memory issues
+        updated_messages = [message | current_messages] |> Enum.take(50)
+        {:ok, %{session | messages: updated_messages}}
+    end
+  end
+
+  def get_recent_messages(session, limit \\ 10) do
+    # Handle sessions that don't have messages field (migration compatibility)
+    messages = Map.get(session, :messages, [])
+
+    messages
+    |> Enum.take(limit)
+    |> Enum.reverse()
+  end
+
   defp generate_session_id do
     :crypto.strong_rand_bytes(8)
     |> Base.encode64(padding: false)
@@ -82,6 +113,11 @@ defmodule Ylm.Sessions do
   end
 
   defp generate_participant_id do
+    System.unique_integer([:positive])
+    |> Integer.to_string()
+  end
+
+  defp generate_message_id do
     System.unique_integer([:positive])
     |> Integer.to_string()
   end

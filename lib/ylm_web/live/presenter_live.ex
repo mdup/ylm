@@ -60,6 +60,17 @@ defmodule YlmWeb.PresenterLive do
   end
 
   @impl true
+  def handle_info({:message_sent, _participant_id, _message}, socket) do
+    # Get the updated session from the SessionManager
+    updated_session = SessionManager.get_session(socket.assigns.session.id)
+
+    {:noreply,
+     socket
+     |> assign(:session, updated_session)
+     |> assign(:participants_by_status, Sessions.get_participants_by_status(updated_session))}
+  end
+
+  @impl true
   def handle_info(_message, socket) do
     # Ignore other messages (like slide_changed which we already handled locally)
     {:noreply, socket}
@@ -320,6 +331,33 @@ defmodule YlmWeb.PresenterLive do
           </p>
         </div>
       </div>
+
+      <!-- Message Ticker -->
+      <%
+        recent_messages = Sessions.get_recent_messages(@session, 5)
+      %>
+      <%= if length(recent_messages) > 0 do %>
+        <div class="fixed bottom-0 left-0 right-0 bg-black text-white py-2 overflow-hidden z-50">
+          <div class="ticker-content whitespace-nowrap">
+            <%= for message <- recent_messages do %>
+              <span class="inline-block font-mono text-sm font-light uppercase px-8">
+                <%= message.participant_name %>: <%= message.content %>
+              </span>
+            <% end %>
+          </div>
+        </div>
+
+        <style>
+          .ticker-content {
+            animation: scroll-left 30s linear infinite;
+          }
+
+          @keyframes scroll-left {
+            0% { transform: translateX(100%); }
+            100% { transform: translateX(-100%); }
+          }
+        </style>
+      <% end %>
     </div>
     """
   end

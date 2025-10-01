@@ -14,6 +14,7 @@ defmodule YlmWeb.ParticipantLive do
      |> assign(:current_slide, 1)
      |> assign(:status, nil)
      |> assign(:joined, false)
+     |> assign(:message_text, "")
      |> assign(:page_title, "Join Session - YLM")}
   end
 
@@ -25,6 +26,44 @@ defmodule YlmWeb.ParticipantLive do
   @impl true
   def handle_event("update_name", %{"key" => _key, "value" => name}, socket) do
     {:noreply, assign(socket, :participant_name, name)}
+  end
+
+  @impl true
+  def handle_event("update_message", %{"value" => message}, socket) do
+    {:noreply, assign(socket, :message_text, message)}
+  end
+
+  @impl true
+  def handle_event("update_message", %{"key" => _key, "value" => message}, socket) do
+    {:noreply, assign(socket, :message_text, message)}
+  end
+
+  @impl true
+  def handle_event("send_message", _params, socket) do
+    message = String.trim(socket.assigns.message_text)
+
+    if String.length(message) > 0 do
+      case SessionManager.add_message(
+        socket.assigns.session_id,
+        socket.assigns.participant_id,
+        message
+      ) do
+        {:ok, _updated_session} ->
+          # Broadcast message update to presenter
+          PubSub.broadcast(
+            Ylm.PubSub,
+            "session:#{socket.assigns.session_id}",
+            {:message_sent, socket.assigns.participant_id, message}
+          )
+
+          {:noreply, assign(socket, :message_text, "")}
+
+        _ ->
+          {:noreply, socket}
+      end
+    else
+      {:noreply, socket}
+    end
   end
 
   @impl true
@@ -57,6 +96,7 @@ defmodule YlmWeb.ParticipantLive do
            |> assign(:participant_id, participant_id)
            |> assign(:joined, true)
            |> assign(:status, initial_status)
+           |> assign(:message_text, "")
            |> assign(:page_title, "#{name} - YLM")}
 
         {:error, :session_not_found} ->
@@ -238,6 +278,33 @@ defmodule YlmWeb.ParticipantLive do
               You can change it at any time.
             </div>
           <% end %>
+
+          <!-- Message Input -->
+          <div class="mt-8 pt-6 border-t border-gray-200">
+            <form phx-submit="send_message" class="space-y-3">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                  Send a message to the presenter
+                </label>
+                <input
+                  type="text"
+                  name="message"
+                  value={@message_text}
+                  phx-keyup="update_message"
+                  class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="Type your message..."
+                  maxlength="200"
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={String.trim(@message_text) == ""}
+                class="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition font-medium disabled:bg-gray-400 disabled:cursor-not-allowed"
+              >
+                Send Message
+              </button>
+            </form>
+          </div>
         </div>
       <% end %>
     </div>
