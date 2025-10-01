@@ -83,7 +83,8 @@ defmodule Ylm.Sessions do
           id: generate_message_id(),
           participant_name: participant.name,
           content: String.trim(content),
-          timestamp: DateTime.utc_now()
+          timestamp: DateTime.utc_now(),
+          slide_number: session.current_slide
         }
 
         # Handle sessions that don't have messages field (migration compatibility)
@@ -101,6 +102,14 @@ defmodule Ylm.Sessions do
 
     messages
     |> Enum.take(limit)
+    |> Enum.reverse()
+  end
+
+  def get_all_messages(session) do
+    # Handle sessions that don't have messages field (migration compatibility)
+    messages = Map.get(session, :messages, [])
+
+    messages
     |> Enum.reverse()
   end
 

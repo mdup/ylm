@@ -7,7 +7,8 @@ defmodule Ylm.Sessions.Session do
     id: String.t(),
     participant_name: String.t(),
     content: String.t(),
-    timestamp: DateTime.t()
+    timestamp: DateTime.t(),
+    slide_number: integer()
   }
 
   @type t :: %__MODULE__{

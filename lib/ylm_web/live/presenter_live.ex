@@ -334,30 +334,18 @@ defmodule YlmWeb.PresenterLive do
 
       <!-- Message Ticker -->
       <%
-        recent_messages = Sessions.get_recent_messages(@session, 5)
+        recent_messages = Sessions.get_recent_messages(@session, 50)
+        messages_json = Jason.encode!(recent_messages)
       %>
-      <%= if length(recent_messages) > 0 do %>
-        <div class="fixed bottom-0 left-0 right-0 bg-black text-white py-2 overflow-hidden z-50">
-          <div class="ticker-content whitespace-nowrap">
-            <%= for message <- recent_messages do %>
-              <span class="inline-block font-mono text-sm font-light uppercase px-8">
-                <%= message.participant_name %>: <%= message.content %>
-              </span>
-            <% end %>
-          </div>
+      <div class="fixed bottom-0 left-0 right-0 bg-black overflow-hidden z-50" style="height: 2rem; line-height: 2rem;">
+        <div
+          id="ticker"
+          phx-hook="TickerHook"
+          data-messages={messages_json}
+          style="font-family: 'Courier New', monospace; font-size: 14px; color: white; white-space: pre; height: 100%;"
+        >
         </div>
-
-        <style>
-          .ticker-content {
-            animation: scroll-left 30s linear infinite;
-          }
-
-          @keyframes scroll-left {
-            0% { transform: translateX(100%); }
-            100% { transform: translateX(-100%); }
-          }
-        </style>
-      <% end %>
+      </div>
     </div>
     """
   end

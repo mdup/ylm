@@ -25,11 +25,112 @@ import {LiveSocket} from "phoenix_live_view"
 import {hooks as colocatedHooks} from "phoenix-colocated/ylm"
 import topbar from "../vendor/topbar"
 
+// Ticker hook - queue-based character scrolling
+//
+// Concept: The ticker is a fixed-width character buffer.
+// Each tick:
+//   1. Shift all characters left by 1 (leftmost char drops off)
+//   2. Get next character from message queue and append to right
+//   3. If no message, append a space
+//
+// Message queue: Array of strings waiting to be displayed
+// Current message: String being popped character by character
+// Spacing: After each message, add N spaces before next message
+//
+const TickerHook = {
+  mounted() {
+    // The ticker buffer (fixed width, filled with spaces initially)
+    this.charWidth = 9  // Pixels per character (monospace)
+    this.viewportWidth = Math.floor(this.el.offsetWidth / this.charWidth)
+    this.nbsp = '\u00A0'  // Non-breaking space (won't be collapsed by DOM)
+    this.buffer = new Array(this.viewportWidth).fill(this.nbsp)
+
+    // Message queue management
+    this.messageQueue = []        // Messages waiting to be displayed
+    this.currentMessage = null    // Current message being displayed (string)
+    this.seenMessageIds = new Set()
+    this.spacesRemaining = 0      // Spaces to add after current message
+
+    this.spacingBetweenMessages = 15  // Characters of spacing between messages
+
+    // Start the ticker - shift left and add character every 100ms
+    this.tickInterval = setInterval(() => this.tick(), 100)
+
+    console.log(`Ticker mounted: buffer width = ${this.viewportWidth} chars`)
+  },
+
+  updated() {
+    // Get new messages from LiveView
+    const newMessages = this.el.dataset.messages ? JSON.parse(this.el.dataset.messages) : []
+
+    // Add unseen messages to the queue
+    newMessages.forEach(msg => {
+      if (!this.seenMessageIds.has(msg.id)) {
+        this.seenMessageIds.add(msg.id)
+        // Format message and replace all regular spaces with non-breaking spaces
+        const text = `${msg.content.toUpperCase()} -- ${msg.participant_name.toUpperCase()}`
+        const textWithNbsp = text.replace(/ /g, this.nbsp)
+        this.messageQueue.push(textWithNbsp)
+        console.log(`Message queued: "${text}" (queue length: ${this.messageQueue.length})`)
+      }
+    })
+  },
+
+  tick() {
+    // 1. Shift buffer left (drop first character)
+    this.buffer.shift()
+
+    // 2. Get next character to append
+    let nextChar = this.nbsp  // Default: non-breaking space
+
+    if (this.spacesRemaining > 0) {
+      // We're in spacing mode between messages
+      nextChar = this.nbsp
+      this.spacesRemaining--
+    } else if (this.currentMessage && this.currentMessage.length > 0) {
+      // Pop next character from current message
+      nextChar = this.currentMessage[0]
+      this.currentMessage = this.currentMessage.slice(1)
+
+      // If message is now empty, start spacing
+      if (this.currentMessage.length === 0) {
+        this.currentMessage = null
+        this.spacesRemaining = this.spacingBetweenMessages
+      }
+    } else if (this.messageQueue.length > 0) {
+      // No current message, but we have queued messages
+      this.currentMessage = this.messageQueue.shift()
+      console.log(`Now displaying: "${this.currentMessage}"`)
+
+      // Pop first character immediately
+      nextChar = this.currentMessage[0]
+      this.currentMessage = this.currentMessage.slice(1)
+
+      if (this.currentMessage.length === 0) {
+        this.currentMessage = null
+        this.spacesRemaining = this.spacingBetweenMessages
+      }
+    }
+
+    // 3. Append next character to buffer
+    this.buffer.push(nextChar)
+
+    // 4. Render buffer to DOM
+    this.el.textContent = this.buffer.join('')
+  },
+
+  destroyed() {
+    if (this.tickInterval) {
+      clearInterval(this.tickInterval)
+    }
+  }
+}
+
 const csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
 const liveSocket = new LiveSocket("/live", Socket, {
   longPollFallbackMs: 2500,
   params: {_csrf_token: csrfToken},
-  hooks: {...colocatedHooks},
+  hooks: {...colocatedHooks, TickerHook},
 })
 
 // Show progress bar on live navigation and form submits
