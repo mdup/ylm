@@ -206,19 +206,21 @@ defmodule YlmWeb.ParticipantLive do
     # Check if cooldown expired
     now = DateTime.utc_now()
 
-    cooldown_expired? = case socket.assigns.message_cooldown_until do
-      nil -> true
-      cooldown_time -> DateTime.compare(now, cooldown_time) != :lt
-    end
+    cooldown_expired? =
+      case socket.assigns.message_cooldown_until do
+        nil -> true
+        cooldown_time -> DateTime.compare(now, cooldown_time) != :lt
+      end
 
-    socket = if cooldown_expired? do
-      # Cooldown finished, clear it
-      assign(socket, :message_cooldown_until, nil)
-    else
-      # Still in cooldown, schedule next tick
-      Process.send_after(self(), :tick_cooldown, 1000)
-      socket
-    end
+    socket =
+      if cooldown_expired? do
+        # Cooldown finished, clear it
+        assign(socket, :message_cooldown_until, nil)
+      else
+        # Still in cooldown, schedule next tick
+        Process.send_after(self(), :tick_cooldown, 1000)
+        socket
+      end
 
     {:noreply, socket}
   end
@@ -292,7 +294,7 @@ defmodule YlmWeb.ParticipantLive do
             <button
               phx-click="set_status"
               phx-value-status="understand"
-              class={"w-full py-4 px-6 rounded-lg text-lg font-medium transition " <>
+              class={"w-full py-4 px-6 rounded-lg text-lg font-medium transition cursor-pointer " <>
                 if @status == :understand,
                   do: "bg-green-600 text-white ring-4 ring-green-300",
                   else: "bg-green-100 text-green-800 hover:bg-green-200"}
@@ -313,7 +315,7 @@ defmodule YlmWeb.ParticipantLive do
             <button
               phx-click="set_status"
               phx-value-status="lost"
-              class={"w-full py-4 px-6 rounded-lg text-lg font-medium transition " <>
+              class={"w-full py-4 px-6 rounded-lg text-lg font-medium transition cursor-pointer " <>
                 if @status == :lost,
                   do: "bg-red-600 text-white ring-4 ring-red-300",
                   else: "bg-red-100 text-red-800 hover:bg-red-200"}
@@ -337,7 +339,7 @@ defmodule YlmWeb.ParticipantLive do
               Your response has been recorded. <br /> You can change it at any time.
             </div>
           <% end %>
-
+          
     <!-- Message Input -->
           <div class="mt-8 pt-6 border-t border-gray-200">
             <% now = DateTime.utc_now()
@@ -386,9 +388,16 @@ defmodule YlmWeb.ParticipantLive do
               <button
                 type="submit"
                 disabled={button_disabled}
-                class="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition font-medium disabled:bg-gray-400 disabled:cursor-not-allowed"
+                class={"w-full text-white py-2 px-4 rounded-lg transition font-medium " <>
+                  if cooldown_active?,
+                    do: "bg-green-500 cursor-not-allowed",
+                    else: "bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"}
               >
-                Send Message
+                <%= if cooldown_active? do %>
+                  ✓ Message sent!
+                <% else %>
+                  Send Message
+                <% end %>
               </button>
             </form>
           </div>
@@ -398,4 +407,3 @@ defmodule YlmWeb.ParticipantLive do
     """
   end
 end
-
