@@ -24,8 +24,12 @@ defmodule Ylm.SessionManager do
     GenServer.call(__MODULE__, {:join_session, session_id, name})
   end
 
-  def update_participant_status(session_id, participant_id, status) do
-    GenServer.call(__MODULE__, {:update_status, session_id, participant_id, status})
+  def update_participant_status(session_id, participant_id, status, slide_number) do
+    GenServer.call(__MODULE__, {:update_status, session_id, participant_id, status, slide_number})
+  end
+
+  def clear_participant_response(session_id, participant_id, slide_number) do
+    GenServer.call(__MODULE__, {:clear_response, session_id, participant_id, slide_number})
   end
 
   def change_slide(session_id, slide_number) do
@@ -65,12 +69,28 @@ defmodule Ylm.SessionManager do
   end
 
   @impl true
-  def handle_call({:update_status, session_id, participant_id, status}, _from, state) do
+  def handle_call({:update_status, session_id, participant_id, status, slide_number}, _from, state) do
     case get_in(state, [:sessions, session_id]) do
       nil ->
         {:reply, {:error, :session_not_found}, state}
       session ->
-        case Sessions.update_participant_status(session, participant_id, status) do
+        case Sessions.update_participant_status(session, participant_id, status, slide_number) do
+          {:ok, updated_session} ->
+            updated_state = put_in(state, [:sessions, session_id], updated_session)
+            {:reply, {:ok, updated_session}, updated_state}
+          error ->
+            {:reply, error, state}
+        end
+    end
+  end
+
+  @impl true
+  def handle_call({:clear_response, session_id, participant_id, slide_number}, _from, state) do
+    case get_in(state, [:sessions, session_id]) do
+      nil ->
+        {:reply, {:error, :session_not_found}, state}
+      session ->
+        case Sessions.clear_participant_response(session, participant_id, slide_number) do
           {:ok, updated_session} ->
             updated_state = put_in(state, [:sessions, session_id], updated_session)
             {:reply, {:ok, updated_session}, updated_state}

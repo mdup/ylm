@@ -18,7 +18,7 @@ defmodule Ylm.Sessions do
     participant = %Participant{
       id: participant_id,
       name: name,
-      status: nil,
+      slide_responses: %{},
       joined_at: DateTime.utc_now()
     }
 
@@ -26,33 +26,48 @@ defmodule Ylm.Sessions do
     {%{session | participants: updated_participants}, participant_id}
   end
 
-  def update_participant_status(session, participant_id, status) when status in [:understand, :lost] do
+  def update_participant_status(session, participant_id, status, slide_number) when status in [:understand, :lost] do
     case Map.get(session.participants, participant_id) do
       nil ->
         {:error, :participant_not_found}
       participant ->
-        updated_participant = %{participant | status: status}
+        updated_participant = Participant.set_response_for_slide(participant, slide_number, status)
+        updated_participants = Map.put(session.participants, participant_id, updated_participant)
+        {:ok, %{session | participants: updated_participants}}
+    end
+  end
+
+  def clear_participant_response(session, participant_id, slide_number) do
+    case Map.get(session.participants, participant_id) do
+      nil ->
+        {:error, :participant_not_found}
+      participant ->
+        updated_participant = Participant.clear_response_for_slide(participant, slide_number)
         updated_participants = Map.put(session.participants, participant_id, updated_participant)
         {:ok, %{session | participants: updated_participants}}
     end
   end
 
   def change_slide(session, slide_number) when is_integer(slide_number) and slide_number > 0 do
-    # Reset all participant statuses when changing slides
-    reset_participants = session.participants
-    |> Enum.map(fn {id, participant} -> {id, %{participant | status: nil}} end)
-    |> Map.new()
-
-    %{session | current_slide: slide_number, participants: reset_participants}
+    # Don't reset participants - preserve their responses for all slides
+    %{session | current_slide: slide_number}
   end
 
   def get_participants_by_status(session) do
+    get_participants_by_status_for_slide(session, session.current_slide)
+  end
+
+  def get_participants_by_status_for_slide(session, slide_number) do
     understand = session.participants
-    |> Enum.filter(fn {_id, p} -> p.status == :understand end)
+    |> Enum.filter(fn {_id, p} ->
+      Participant.get_response_for_slide(p, slide_number) == :understand
+    end)
     |> Enum.map(fn {_id, p} -> p end)
 
     lost = session.participants
-    |> Enum.filter(fn {_id, p} -> p.status == :lost end)
+    |> Enum.filter(fn {_id, p} ->
+      Participant.get_response_for_slide(p, slide_number) == :lost
+    end)
     |> Enum.map(fn {_id, p} -> p end)
 
     %{understand: understand, lost: lost}

@@ -65,6 +65,16 @@ defmodule YlmWeb.PresenterLive do
     {:noreply, socket}
   end
 
+  # Helper function to get initials from a name
+  defp get_initials(name) do
+    name
+    |> String.split()
+    |> Enum.take(2)  # Take first two words
+    |> Enum.map(&String.first(&1))
+    |> Enum.map(&String.upcase(&1))
+    |> Enum.join("")
+  end
+
   @impl true
   def render(assigns) do
     ~H"""
@@ -94,6 +104,10 @@ defmodule YlmWeb.PresenterLive do
             </div>
             <div class="text-sm text-gray-600">
               Session Code: <span class="font-mono font-bold text-lg"><%= @session.id %></span>
+              <br>
+              Join URL: <span class="font-mono text-sm text-blue-600">
+                <%= YlmWeb.Endpoint.url() %>/join/<%= @session.id %>
+              </span>
             </div>
           </div>
         </div>
@@ -223,6 +237,30 @@ defmodule YlmWeb.PresenterLive do
             </div>
           </div>
         </div>
+
+        <!-- Connected Participants -->
+        <%= if total > 0 do %>
+          <div class="mt-8">
+            <h3 class="text-xl font-bold text-gray-800 mb-4 text-center">Connected Participants</h3>
+            <div class="flex flex-wrap justify-center gap-3">
+              <%= for {_id, participant} <- @session.participants do %>
+                <%
+                  current_response = Ylm.Sessions.Participant.get_response_for_slide(participant, @session.current_slide)
+                  border_color = case current_response do
+                    :understand -> "border-green-500 bg-green-50"
+                    :lost -> "border-red-500 bg-red-50"
+                    nil -> "border-gray-300 bg-gray-50"
+                  end
+                %>
+                <div class={"w-12 h-12 rounded-full flex items-center justify-center border-2 #{border_color}"}>
+                  <span class="text-sm font-semibold text-gray-700">
+                    <%= get_initials(participant.name) %>
+                  </span>
+                </div>
+              <% end %>
+            </div>
+          </div>
+        <% end %>
 
         <div class="mt-8 text-center text-gray-600">
           <p class="text-lg">

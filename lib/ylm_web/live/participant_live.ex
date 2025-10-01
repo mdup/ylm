@@ -38,6 +38,13 @@ defmodule YlmWeb.ParticipantLive do
           # Subscribe to session updates
           PubSub.subscribe(Ylm.PubSub, "session:#{socket.assigns.session_id}")
 
+          # Get any previous response for the current slide
+          initial_status = get_participant_status_for_slide(
+            socket.assigns.session_id,
+            participant_id,
+            socket.assigns.current_slide
+          )
+
           # Notify presenter of new participant
           PubSub.broadcast(
             Ylm.PubSub,
@@ -49,6 +56,7 @@ defmodule YlmWeb.ParticipantLive do
            socket
            |> assign(:participant_id, participant_id)
            |> assign(:joined, true)
+           |> assign(:status, initial_status)
            |> assign(:page_title, "#{name} - YLM")}
 
         {:error, :session_not_found} ->
@@ -62,40 +70,89 @@ defmodule YlmWeb.ParticipantLive do
   @impl true
   def handle_event("set_status", %{"status" => status}, socket) do
     status_atom = String.to_existing_atom(status)
+    current_status = socket.assigns.status
 
-    # Update status through SessionManager
-    case SessionManager.update_participant_status(
-      socket.assigns.session_id,
-      socket.assigns.participant_id,
-      status_atom
-    ) do
-      {:ok, _updated_session} ->
-        # Broadcast status update to presenter
-        PubSub.broadcast(
-          Ylm.PubSub,
-          "session:#{socket.assigns.session_id}",
-          {:status_updated, socket.assigns.participant_id, status_atom}
-        )
+    # If clicking the same button, toggle it off (remove response)
+    new_status = if current_status == status_atom, do: nil, else: status_atom
 
-        {:noreply, assign(socket, :status, status_atom)}
+    case new_status do
+      nil ->
+        # Clear the response for this slide
+        case SessionManager.clear_participant_response(
+          socket.assigns.session_id,
+          socket.assigns.participant_id,
+          socket.assigns.current_slide
+        ) do
+          {:ok, _updated_session} ->
+            # Broadcast status update to presenter
+            PubSub.broadcast(
+              Ylm.PubSub,
+              "session:#{socket.assigns.session_id}",
+              {:status_updated, socket.assigns.participant_id, nil}
+            )
 
-      _ ->
-        {:noreply, socket}
+            {:noreply, assign(socket, :status, nil)}
+
+          _ ->
+            {:noreply, socket}
+        end
+
+      status ->
+        # Update status through SessionManager for the current slide
+        case SessionManager.update_participant_status(
+          socket.assigns.session_id,
+          socket.assigns.participant_id,
+          status,
+          socket.assigns.current_slide
+        ) do
+          {:ok, _updated_session} ->
+            # Broadcast status update to presenter
+            PubSub.broadcast(
+              Ylm.PubSub,
+              "session:#{socket.assigns.session_id}",
+              {:status_updated, socket.assigns.participant_id, status}
+            )
+
+            {:noreply, assign(socket, :status, status)}
+
+          _ ->
+            {:noreply, socket}
+        end
     end
   end
 
   @impl true
   def handle_info({:slide_changed, slide_number}, socket) do
+    # Get the participant's previous response for this slide (if any)
+    previous_status = get_participant_status_for_slide(
+      socket.assigns.session_id,
+      socket.assigns.participant_id,
+      slide_number
+    )
+
     {:noreply,
      socket
      |> assign(:current_slide, slide_number)
-     |> assign(:status, nil)}  # Reset status on slide change
+     |> assign(:status, previous_status)}
   end
 
   @impl true
   def handle_info(_message, socket) do
     # Ignore other messages (like participant_joined which is meant for presenter)
     {:noreply, socket}
+  end
+
+  # Helper function to get participant's status for a specific slide
+  defp get_participant_status_for_slide(session_id, participant_id, slide_number) do
+    case SessionManager.get_session(session_id) do
+      nil -> nil
+      session ->
+        case Map.get(session.participants, participant_id) do
+          nil -> nil
+          participant ->
+            Ylm.Sessions.Participant.get_response_for_slide(participant, slide_number)
+        end
+    end
   end
 
   @impl true
