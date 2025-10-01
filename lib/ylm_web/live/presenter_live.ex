@@ -69,7 +69,7 @@ defmodule YlmWeb.PresenterLive do
   def render(assigns) do
     ~H"""
     <div class="min-h-screen bg-gray-100 p-8">
-      <div class="max-w-6xl mx-auto">
+      <div class="max-w-7xl mx-auto">
         <div class="bg-white rounded-lg shadow-lg p-8 mb-8">
           <div class="text-center">
             <h1 class="text-6xl font-bold text-gray-800 mb-4">
@@ -99,40 +99,126 @@ defmodule YlmWeb.PresenterLive do
         </div>
 
         <div class="grid grid-cols-2 gap-8">
-          <div class="bg-green-50 rounded-lg p-6">
-            <h2 class="text-2xl font-bold text-green-800 mb-4 flex items-center">
-              <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              I Understand (<%= length(@participants_by_status.understand) %>)
-            </h2>
-            <div class="space-y-2">
+          <%
+            total = map_size(@session.participants)
+            understand_count = length(@participants_by_status.understand)
+            lost_count = length(@participants_by_status.lost)
+            understand_percentage = if total > 0, do: understand_count / total * 100, else: 0
+            lost_percentage = if total > 0, do: lost_count / total * 100, else: 0
+          %>
+
+          <!-- I Understand Section -->
+          <div class="bg-green-50 rounded-lg p-8">
+            <h2 class="text-2xl font-bold text-green-800 mb-6 text-center">I Understand</h2>
+
+            <!-- Progress Circle -->
+            <div class="flex justify-center mb-6">
+              <div class="relative">
+                <svg class="w-48 h-48 transform -rotate-90">
+                  <!-- Background circle -->
+                  <circle
+                    cx="96"
+                    cy="96"
+                    r="88"
+                    stroke="#e5e7eb"
+                    stroke-width="16"
+                    fill="none"
+                  />
+                  <!-- Progress circle -->
+                  <circle
+                    cx="96"
+                    cy="96"
+                    r="88"
+                    stroke="#10b981"
+                    stroke-width="16"
+                    fill="none"
+                    stroke-dasharray={"#{88 * 2 * 3.14159}"}
+                    stroke-dashoffset={"#{88 * 2 * 3.14159 * (1 - understand_percentage / 100)}"}
+                    class="transition-all duration-500"
+                  />
+                </svg>
+                <div class="absolute inset-0 flex flex-col items-center justify-center">
+                  <span class="text-6xl font-bold text-green-700">
+                    <%= understand_count %>
+                  </span>
+                  <span class="text-lg text-gray-600">
+                    <%= if total > 0 do %>
+                      of <%= total %>
+                    <% else %>
+                      waiting...
+                    <% end %>
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Participant list -->
+            <div class="space-y-2 max-h-64 overflow-y-auto">
               <%= for participant <- @participants_by_status.understand do %>
                 <div class="bg-white rounded px-4 py-2 text-gray-800">
                   <%= participant.name %>
                 </div>
               <% end %>
               <%= if Enum.empty?(@participants_by_status.understand) do %>
-                <div class="text-gray-500 italic">No participants yet</div>
+                <div class="text-gray-500 italic text-center">No responses yet</div>
               <% end %>
             </div>
           </div>
 
-          <div class="bg-red-50 rounded-lg p-6">
-            <h2 class="text-2xl font-bold text-red-800 mb-4 flex items-center">
-              <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              You Lost Me (<%= length(@participants_by_status.lost) %>)
-            </h2>
-            <div class="space-y-2">
+          <!-- You Lost Me Section -->
+          <div class="bg-red-50 rounded-lg p-8">
+            <h2 class="text-2xl font-bold text-red-800 mb-6 text-center">You Lost Me</h2>
+
+            <!-- Progress Circle -->
+            <div class="flex justify-center mb-6">
+              <div class="relative">
+                <svg class="w-48 h-48 transform -rotate-90">
+                  <!-- Background circle -->
+                  <circle
+                    cx="96"
+                    cy="96"
+                    r="88"
+                    stroke="#e5e7eb"
+                    stroke-width="16"
+                    fill="none"
+                  />
+                  <!-- Progress circle -->
+                  <circle
+                    cx="96"
+                    cy="96"
+                    r="88"
+                    stroke="#ef4444"
+                    stroke-width="16"
+                    fill="none"
+                    stroke-dasharray={"#{88 * 2 * 3.14159}"}
+                    stroke-dashoffset={"#{88 * 2 * 3.14159 * (1 - lost_percentage / 100)}"}
+                    class="transition-all duration-500"
+                  />
+                </svg>
+                <div class="absolute inset-0 flex flex-col items-center justify-center">
+                  <span class="text-6xl font-bold text-red-700">
+                    <%= lost_count %>
+                  </span>
+                  <span class="text-lg text-gray-600">
+                    <%= if total > 0 do %>
+                      of <%= total %>
+                    <% else %>
+                      waiting...
+                    <% end %>
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Participant list -->
+            <div class="space-y-2 max-h-64 overflow-y-auto">
               <%= for participant <- @participants_by_status.lost do %>
                 <div class="bg-white rounded px-4 py-2 text-gray-800">
                   <%= participant.name %>
                 </div>
               <% end %>
               <%= if Enum.empty?(@participants_by_status.lost) do %>
-                <div class="text-gray-500 italic">No participants yet</div>
+                <div class="text-gray-500 italic text-center">No responses yet</div>
               <% end %>
             </div>
           </div>
@@ -140,7 +226,11 @@ defmodule YlmWeb.PresenterLive do
 
         <div class="mt-8 text-center text-gray-600">
           <p class="text-lg">
-            Total Participants: <%= map_size(@session.participants) %>
+            Total Participants: <span class="font-bold text-2xl"><%= total %></span>
+            <%= if total > 0 do %>
+              <span class="mx-4">|</span>
+              Responded: <span class="font-bold text-2xl"><%= understand_count + lost_count %></span>
+            <% end %>
           </p>
         </div>
       </div>
