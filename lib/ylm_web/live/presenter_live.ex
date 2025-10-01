@@ -345,7 +345,7 @@ defmodule YlmWeb.PresenterLive do
           id="ticker"
           phx-hook="TickerHook"
           data-messages={messages_json}
-          style="font-family: 'Courier New', monospace; font-size: 32px; color: white; white-space: pre; height: 100%;"
+          style="font-family: 'Courier New', monospace; font-weight: bold; font-size: 32px; color: white; white-space: pre; height: 100%;"
         >
         </div>
       </div>
