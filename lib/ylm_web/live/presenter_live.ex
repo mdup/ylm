@@ -75,6 +75,21 @@ defmodule YlmWeb.PresenterLive do
     |> Enum.join("")
   end
 
+  # Helper function to generate QR code as data URI
+  defp generate_qr_code(url) do
+    case QRCode.create(url) do
+      {:ok, qr_code} ->
+        case QRCode.render(qr_code) do
+          {:ok, svg} ->
+            "data:image/svg+xml;base64,#{Base.encode64(svg)}"
+          _ ->
+            nil
+        end
+      _ ->
+        nil
+    end
+  end
+
   @impl true
   def render(assigns) do
     ~H"""
@@ -109,6 +124,20 @@ defmodule YlmWeb.PresenterLive do
                 <%= YlmWeb.Endpoint.url() %>/join/<%= @session.id %>
               </span>
             </div>
+
+            <!-- QR Code for Join URL -->
+            <%
+              join_url = "#{YlmWeb.Endpoint.url()}/join/#{@session.id}"
+              qr_code_data = generate_qr_code(join_url)
+            %>
+            <%= if qr_code_data do %>
+              <div class="mt-4 flex justify-center">
+                <div class="bg-white p-4 rounded-lg shadow-md">
+                  <img src={qr_code_data} alt="QR Code for join URL" class="w-32 h-32" />
+                  <p class="text-xs text-gray-500 text-center mt-2">Scan to join</p>
+                </div>
+              </div>
+            <% end %>
           </div>
         </div>
 
