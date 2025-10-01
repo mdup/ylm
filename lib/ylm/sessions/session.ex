@@ -1,7 +1,7 @@
 defmodule Ylm.Sessions.Session do
   @moduledoc "Represents a presentation session"
 
-  defstruct [:id, :current_slide, :participants, :messages]
+  defstruct [:id, :current_slide, :participants, :messages, :presenter_connected]
 
   @type message :: %{
     id: String.t(),
@@ -15,6 +15,7 @@ defmodule Ylm.Sessions.Session do
     id: String.t(),
     current_slide: integer(),
     participants: %{String.t() => Ylm.Sessions.Participant.t()},
-    messages: [message()]
+    messages: [message()],
+    presenter_connected: boolean()
   }
 end

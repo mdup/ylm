@@ -10,7 +10,8 @@ defmodule Ylm.Sessions do
       id: generate_session_id(),
       current_slide: 1,
       participants: %{},
-      messages: []
+      messages: [],
+      presenter_connected: true
     }
   end
 
@@ -111,6 +112,10 @@ defmodule Ylm.Sessions do
 
     messages
     |> Enum.reverse()
+  end
+
+  def mark_presenter_disconnected(session) do
+    %{session | presenter_connected: false}
   end
 
   defp generate_session_id do

@@ -11,6 +11,9 @@ defmodule YlmWeb.PresenterLive do
     # Subscribe to updates for this session
     PubSub.subscribe(Ylm.PubSub, "session:#{session.id}")
 
+    # Register this presenter process so SessionManager can monitor it
+    SessionManager.register_presenter(session.id, self())
+
     {:ok,
      socket
      |> assign(:session, session)

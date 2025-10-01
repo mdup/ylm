@@ -6,17 +6,40 @@ defmodule YlmWeb.ParticipantLive do
 
   @impl true
   def mount(%{"session_id" => session_id}, _session, socket) do
-    {:ok,
-     socket
-     |> assign(:session_id, session_id)
-     |> assign(:participant_id, nil)
-     |> assign(:participant_name, "")
-     |> assign(:current_slide, 1)
-     |> assign(:status, nil)
-     |> assign(:joined, false)
-     |> assign(:message_text, "")
-     |> assign(:message_cooldown_until, nil)
-     |> assign(:page_title, "Join Session - YLM")}
+    # Check if session exists
+    case SessionManager.get_session(session_id) do
+      nil ->
+        {:ok,
+         socket
+         |> assign(:session_id, session_id)
+         |> assign(:participant_id, nil)
+         |> assign(:participant_name, "")
+         |> assign(:current_slide, 1)
+         |> assign(:status, nil)
+         |> assign(:joined, false)
+         |> assign(:message_text, "")
+         |> assign(:message_cooldown_until, nil)
+         |> assign(:session_exists, false)
+         |> assign(:presenter_connected, false)
+         |> assign(:page_title, "Session Not Found - YLM")}
+
+      session ->
+        presenter_connected = Map.get(session, :presenter_connected, true)
+
+        {:ok,
+         socket
+         |> assign(:session_id, session_id)
+         |> assign(:participant_id, nil)
+         |> assign(:participant_name, "")
+         |> assign(:current_slide, 1)
+         |> assign(:status, nil)
+         |> assign(:joined, false)
+         |> assign(:message_text, "")
+         |> assign(:message_cooldown_until, nil)
+         |> assign(:session_exists, true)
+         |> assign(:presenter_connected, presenter_connected)
+         |> assign(:page_title, if(presenter_connected, do: "Join Session - YLM", else: "Presenter Disconnected - YLM"))}
+    end
   end
 
   @impl true
@@ -226,6 +249,14 @@ defmodule YlmWeb.ParticipantLive do
   end
 
   @impl true
+  def handle_info(:presenter_disconnected, socket) do
+    {:noreply,
+     socket
+     |> assign(:presenter_connected, false)
+     |> assign(:page_title, "Presenter Disconnected - YLM")}
+  end
+
+  @impl true
   def handle_info(_message, socket) do
     # Ignore other messages (like participant_joined which is meant for presenter)
     {:noreply, socket}
@@ -252,7 +283,39 @@ defmodule YlmWeb.ParticipantLive do
   def render(assigns) do
     ~H"""
     <div class="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
-      <%= if not @joined do %>
+      <%= if not @session_exists do %>
+        <div class="bg-white rounded-lg shadow-xl p-8 max-w-md w-full">
+          <div class="text-center">
+            <svg class="w-16 h-16 mx-auto mb-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <h1 class="text-3xl font-bold text-gray-800 mb-4">Session Not Found</h1>
+            <p class="text-gray-600 mb-4">
+              The session code <span class="font-mono font-bold text-red-600">{@session_id}</span> does not exist or has expired.
+            </p>
+            <p class="text-sm text-gray-500">
+              Please check the code and try again, or ask the presenter for a new link.
+            </p>
+          </div>
+        </div>
+      <% else %>
+        <%= if not @presenter_connected do %>
+          <div class="bg-white rounded-lg shadow-xl p-8 max-w-md w-full">
+            <div class="text-center">
+              <svg class="w-16 h-16 mx-auto mb-4 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 5.636a9 9 0 010 12.728m0 0l-2.829-2.829m2.829 2.829L21 21M15.536 8.464a5 5 0 010 7.072m0 0l-2.829-2.829m-4.243 2.829a4.978 4.978 0 01-1.414-2.83m-1.414 5.658a9 9 0 01-2.167-9.238m7.824 2.167a1 1 0 111.414 1.414m-1.414-1.414L3 3" />
+              </svg>
+              <h1 class="text-3xl font-bold text-gray-800 mb-4">Presenter Disconnected</h1>
+              <p class="text-gray-600 mb-4">
+                The presenter for session <span class="font-mono font-bold text-orange-600">{@session_id}</span> has disconnected.
+              </p>
+              <p class="text-sm text-gray-500">
+                The session is no longer active. Please wait for the presenter to start a new session.
+              </p>
+            </div>
+          </div>
+        <% else %>
+        <%= if not @joined do %>
         <div class="bg-white rounded-lg shadow-xl p-8 max-w-md w-full">
           <h1 class="text-3xl font-bold text-gray-800 mb-6 text-center">Join Session</h1>
           <form phx-submit="join" class="space-y-4">
@@ -402,6 +465,8 @@ defmodule YlmWeb.ParticipantLive do
             </form>
           </div>
         </div>
+        <% end %>
+        <% end %>
       <% end %>
     </div>
     """

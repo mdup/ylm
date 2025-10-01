@@ -40,11 +40,19 @@ defmodule Ylm.SessionManager do
     GenServer.call(__MODULE__, {:add_message, session_id, participant_id, content})
   end
 
+  def mark_presenter_disconnected(session_id) do
+    GenServer.call(__MODULE__, {:mark_presenter_disconnected, session_id})
+  end
+
+  def register_presenter(session_id, presenter_pid) do
+    GenServer.call(__MODULE__, {:register_presenter, session_id, presenter_pid})
+  end
+
   # Server Callbacks
 
   @impl true
   def init(_) do
-    {:ok, %{sessions: %{}}}
+    {:ok, %{sessions: %{}, presenter_monitors: %{}}}
   end
 
   @impl true
@@ -128,6 +136,75 @@ defmodule Ylm.SessionManager do
             {:reply, {:ok, updated_session}, updated_state}
           error ->
             {:reply, error, state}
+        end
+    end
+  end
+
+  @impl true
+  def handle_call({:mark_presenter_disconnected, session_id}, _from, state) do
+    case get_in(state, [:sessions, session_id]) do
+      nil ->
+        {:reply, :ok, state}
+      session ->
+        updated_session = Sessions.mark_presenter_disconnected(session)
+        updated_state = put_in(state, [:sessions, session_id], updated_session)
+        {:reply, :ok, updated_state}
+    end
+  end
+
+  @impl true
+  def handle_call({:register_presenter, session_id, presenter_pid}, _from, state) do
+    # Monitor the presenter process
+    ref = Process.monitor(presenter_pid)
+
+    # Ensure presenter_monitors map exists (for backward compatibility)
+    presenter_monitors = Map.get(state, :presenter_monitors, %{})
+
+    # Store the monitor ref and session_id mapping
+    updated_state = Map.put(state, :presenter_monitors, Map.put(presenter_monitors, ref, session_id))
+
+    {:reply, :ok, updated_state}
+  end
+
+  @impl true
+  def handle_info({:DOWN, ref, :process, _pid, _reason}, state) do
+    # Ensure presenter_monitors exists
+    presenter_monitors = Map.get(state, :presenter_monitors, %{})
+
+    # Check if this was a presenter process
+    case Map.get(presenter_monitors, ref) do
+      nil ->
+        # Not a presenter we're monitoring
+        {:noreply, state}
+
+      session_id ->
+        # Presenter disconnected - mark session and broadcast
+        case get_in(state, [:sessions, session_id]) do
+          nil ->
+            # Clean up monitor ref
+            updated_monitors = Map.delete(presenter_monitors, ref)
+            updated_state = Map.put(state, :presenter_monitors, updated_monitors)
+            {:noreply, updated_state}
+
+          session ->
+            # Mark session as disconnected
+            updated_session = Sessions.mark_presenter_disconnected(session)
+
+            # Broadcast to participants
+            Phoenix.PubSub.broadcast(
+              Ylm.PubSub,
+              "session:#{session_id}",
+              :presenter_disconnected
+            )
+
+            # Update state
+            updated_monitors = Map.delete(presenter_monitors, ref)
+            updated_state =
+              state
+              |> put_in([:sessions, session_id], updated_session)
+              |> Map.put(:presenter_monitors, updated_monitors)
+
+            {:noreply, updated_state}
         end
     end
   end
