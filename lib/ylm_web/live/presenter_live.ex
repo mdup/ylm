@@ -21,10 +21,12 @@ defmodule YlmWeb.PresenterLive do
   @impl true
   def handle_event("change_slide", %{"direction" => direction}, socket) do
     current_slide = socket.assigns.session.current_slide
-    new_slide = case direction do
-      "next" -> current_slide + 1
-      "prev" -> max(1, current_slide - 1)
-    end
+
+    new_slide =
+      case direction do
+        "next" -> current_slide + 1
+        "prev" -> max(1, current_slide - 1)
+      end
 
     {:ok, updated_session} = SessionManager.change_slide(socket.assigns.session.id, new_slide)
 
@@ -80,7 +82,8 @@ defmodule YlmWeb.PresenterLive do
   defp get_initials(name) do
     name
     |> String.split()
-    |> Enum.take(2)  # Take first two words
+    # Take first two words
+    |> Enum.take(2)
     |> Enum.map(&String.first(&1))
     |> Enum.map(&String.upcase(&1))
     |> Enum.join("")
@@ -93,6 +96,7 @@ defmodule YlmWeb.PresenterLive do
       case url |> QRCode.create() |> QRCode.render() do
         {:ok, svg_content} when is_binary(svg_content) ->
           "data:image/svg+xml;base64,#{Base.encode64(svg_content)}"
+
         _ ->
           nil
       end
@@ -109,22 +113,20 @@ defmodule YlmWeb.PresenterLive do
       <div class="max-w-7xl mx-auto">
         <div class="bg-white rounded-lg shadow-lg p-8 mb-8 relative">
           <!-- QR Code positioned absolutely in top-right, hidden on small screens -->
-          <%
-            join_url = "#{YlmWeb.Endpoint.url()}/join/#{@session.id}"
-            qr_code_data = generate_qr_code(join_url)
-          %>
+          <% join_url = "#{YlmWeb.Endpoint.url()}/join/#{@session.id}"
+          qr_code_data = generate_qr_code(join_url) %>
           <%= if qr_code_data do %>
             <div class="hidden md:flex absolute top-1/2 right-4 -translate-y-1/2 z-10">
               <div class="bg-white p-3 rounded-lg">
                 <img src={qr_code_data} alt="QR Code for join URL" class="w-24 h-24" />
-                <p class="text-xs font-mono font-bold text-center mt-1"><%= @session.id %></p>
+                <p class="text-xs font-mono font-bold text-center mt-1">{@session.id}</p>
               </div>
             </div>
           <% end %>
 
           <div class="text-center">
             <h1 class="text-6xl font-bold text-gray-800 mb-4">
-              Slide <%= @session.current_slide %>
+              Slide {@session.current_slide}
             </h1>
             <div class="flex justify-center gap-4 mb-6">
               <button
@@ -145,16 +147,17 @@ defmodule YlmWeb.PresenterLive do
             </div>
             <!-- Only show session code line when QR code is not visible -->
             <div class="text-sm text-gray-600 md:hidden">
-              Session Code: <span class="font-mono font-bold text-lg"><%= @session.id %></span>
-              <br>
+              Session Code: <span class="font-mono font-bold text-lg">{@session.id}</span>
+              <br />
             </div>
             <div class="text-sm text-gray-600">
-              Join URL: <span class="font-mono text-sm text-blue-600">
-                <%= YlmWeb.Endpoint.url() %>/join/<%= @session.id %>
+              Join URL:
+              <span class="font-mono text-sm text-blue-600">
+                {YlmWeb.Endpoint.url()}/join/{@session.id}
               </span>
             </div>
-
-            <!-- QR Code fallback for small screens - in main flow -->
+            
+    <!-- QR Code fallback for small screens - in main flow -->
             <%= if qr_code_data do %>
               <div class="md:hidden mt-4 flex justify-center">
                 <div class="bg-white p-4 rounded-lg">
@@ -172,19 +175,17 @@ defmodule YlmWeb.PresenterLive do
         </div>
 
         <div class="grid grid-cols-2 gap-8">
-          <%
-            total = map_size(@session.participants)
-            understand_count = length(@participants_by_status.understand)
-            lost_count = length(@participants_by_status.lost)
-            understand_percentage = if total > 0, do: understand_count / total * 100, else: 0
-            lost_percentage = if total > 0, do: lost_count / total * 100, else: 0
-          %>
-
-          <!-- I Understand Section -->
+          <% total = map_size(@session.participants)
+          understand_count = length(@participants_by_status.understand)
+          lost_count = length(@participants_by_status.lost)
+          understand_percentage = if total > 0, do: understand_count / total * 100, else: 0
+          lost_percentage = if total > 0, do: lost_count / total * 100, else: 0 %>
+          
+    <!-- I Understand Section -->
           <div class="bg-green-50 rounded-lg p-8">
-            <h2 class="text-2xl font-bold text-green-800 mb-6 text-center">I Understand</h2>
-
-            <!-- Progress Circle -->
+            <h2 class="text-4xl font-bold text-green-800 mb-6 text-center">I Understand</h2>
+            
+    <!-- Progress Circle -->
             <div class="flex justify-center mb-6">
               <div class="relative">
                 <svg class="w-48 h-48 transform -rotate-90">
@@ -212,11 +213,11 @@ defmodule YlmWeb.PresenterLive do
                 </svg>
                 <div class="absolute inset-0 flex flex-col items-center justify-center">
                   <span class="text-6xl font-bold text-green-700">
-                    <%= understand_count %>
+                    {understand_count}
                   </span>
                   <span class="text-lg text-gray-600">
                     <%= if total > 0 do %>
-                      of <%= total %>
+                      of {total}
                     <% else %>
                       waiting...
                     <% end %>
@@ -224,12 +225,12 @@ defmodule YlmWeb.PresenterLive do
                 </div>
               </div>
             </div>
-
-            <!-- Participant list -->
+            
+    <!-- Participant list -->
             <div class="space-y-2 max-h-64 overflow-y-auto">
               <%= for participant <- @participants_by_status.understand do %>
                 <div class="bg-white rounded px-4 py-2 text-gray-800">
-                  <%= participant.name %>
+                  {participant.name}
                 </div>
               <% end %>
               <%= if Enum.empty?(@participants_by_status.understand) do %>
@@ -237,12 +238,12 @@ defmodule YlmWeb.PresenterLive do
               <% end %>
             </div>
           </div>
-
-          <!-- You Lost Me Section -->
+          
+    <!-- You Lost Me Section -->
           <div class="bg-red-50 rounded-lg p-8">
-            <h2 class="text-2xl font-bold text-red-800 mb-6 text-center">You Lost Me</h2>
-
-            <!-- Progress Circle -->
+            <h2 class="text-4xl font-bold text-red-800 mb-6 text-center">You Lost Me</h2>
+            
+    <!-- Progress Circle -->
             <div class="flex justify-center mb-6">
               <div class="relative">
                 <svg class="w-48 h-48 transform -rotate-90">
@@ -270,11 +271,11 @@ defmodule YlmWeb.PresenterLive do
                 </svg>
                 <div class="absolute inset-0 flex flex-col items-center justify-center">
                   <span class="text-6xl font-bold text-red-700">
-                    <%= lost_count %>
+                    {lost_count}
                   </span>
                   <span class="text-lg text-gray-600">
                     <%= if total > 0 do %>
-                      of <%= total %>
+                      of {total}
                     <% else %>
                       waiting...
                     <% end %>
@@ -282,12 +283,12 @@ defmodule YlmWeb.PresenterLive do
                 </div>
               </div>
             </div>
-
-            <!-- Participant list -->
+            
+    <!-- Participant list -->
             <div class="space-y-2 max-h-64 overflow-y-auto">
               <%= for participant <- @participants_by_status.lost do %>
                 <div class="bg-white rounded px-4 py-2 text-gray-800">
-                  <%= participant.name %>
+                  {participant.name}
                 </div>
               <% end %>
               <%= if Enum.empty?(@participants_by_status.lost) do %>
@@ -296,24 +297,25 @@ defmodule YlmWeb.PresenterLive do
             </div>
           </div>
         </div>
-
-        <!-- Connected Participants -->
+        
+    <!-- Connected Participants -->
         <%= if total > 0 do %>
           <div class="mt-8">
             <h3 class="text-xl font-bold text-gray-800 mb-4 text-center">Connected Participants</h3>
             <div class="flex flex-wrap justify-center gap-3">
               <%= for {_id, participant} <- @session.participants do %>
-                <%
-                  current_response = Ylm.Sessions.Participant.get_response_for_slide(participant, @session.current_slide)
-                  border_color = case current_response do
+                <% current_response =
+                  Ylm.Sessions.Participant.get_response_for_slide(participant, @session.current_slide)
+
+                border_color =
+                  case current_response do
                     :understand -> "border-green-500 bg-green-50"
                     :lost -> "border-red-500 bg-red-50"
                     nil -> "border-gray-300 bg-gray-50"
-                  end
-                %>
+                  end %>
                 <div class={"w-12 h-12 rounded-full flex items-center justify-center border-2 #{border_color}"}>
                   <span class="text-sm font-semibold text-gray-700">
-                    <%= get_initials(participant.name) %>
+                    {get_initials(participant.name)}
                   </span>
                 </div>
               <% end %>
@@ -323,26 +325,27 @@ defmodule YlmWeb.PresenterLive do
 
         <div class="mt-8 text-center text-gray-600">
           <p class="text-lg">
-            Total Participants: <span class="font-bold text-2xl"><%= total %></span>
+            Total Participants: <span class="font-bold text-2xl">{total}</span>
             <%= if total > 0 do %>
               <span class="mx-4">|</span>
-              Responded: <span class="font-bold text-2xl"><%= understand_count + lost_count %></span>
+              Responded: <span class="font-bold text-2xl">{understand_count + lost_count}</span>
             <% end %>
           </p>
         </div>
       </div>
-
-      <!-- Message Ticker -->
-      <%
-        recent_messages = Sessions.get_recent_messages(@session, 50)
-        messages_json = Jason.encode!(recent_messages)
-      %>
-      <div class="fixed bottom-0 left-0 right-0 bg-black overflow-hidden z-50" style="height: 2rem; line-height: 2rem;">
+      
+    <!-- Message Ticker -->
+      <% recent_messages = Sessions.get_recent_messages(@session, 50)
+      messages_json = Jason.encode!(recent_messages) %>
+      <div
+        class="fixed bottom-0 left-0 right-0 bg-slate-900 overflow-hidden z-50"
+        style="height: 4rem; line-height: 4rem;"
+      >
         <div
           id="ticker"
           phx-hook="TickerHook"
           data-messages={messages_json}
-          style="font-family: 'Courier New', monospace; font-size: 14px; color: white; white-space: pre; height: 100%;"
+          style="font-family: 'Courier New', monospace; font-size: 32px; color: white; white-space: pre; height: 100%;"
         >
         </div>
       </div>
@@ -350,3 +353,4 @@ defmodule YlmWeb.PresenterLive do
     """
   end
 end
+
