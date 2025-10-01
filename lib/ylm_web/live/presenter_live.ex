@@ -93,7 +93,7 @@ defmodule YlmWeb.PresenterLive do
   defp generate_qr_code(url) do
     try do
       # Use the pipeline approach to generate SVG QR code
-      case url |> QRCode.create() |> QRCode.render() do
+      case url |> QRCode.create() |> QRCode.render(:png, %QRCode.Render.PngSettings{scale: 20}) do
         {:ok, svg_content} when is_binary(svg_content) ->
           "data:image/svg+xml;base64,#{Base.encode64(svg_content)}"
 
@@ -116,10 +116,10 @@ defmodule YlmWeb.PresenterLive do
           <% join_url = "#{YlmWeb.Endpoint.url()}/join/#{@session.id}"
           qr_code_data = generate_qr_code(join_url) %>
           <%= if qr_code_data do %>
-            <div class="hidden md:flex absolute top-1/2 right-4 -translate-y-1/2 z-10">
-              <div class="bg-white p-3 rounded-lg">
-                <img src={qr_code_data} alt="QR Code for join URL" class="w-24 h-24" />
-                <p class="text-xs font-mono font-bold text-center mt-1">{@session.id}</p>
+            <div class="hidden md:flex absolute top-1/2 right-2 -translate-y-1/2 z-10">
+              <div class="bg-transparent p-0 rounded-lg">
+                <img src={qr_code_data} alt="QR Code for join URL" class="w-40 h-40" />
+                <p class="text-xs font-mono font-bold text-center mt-0.5">{@session.id}</p>
               </div>
             </div>
           <% end %>
