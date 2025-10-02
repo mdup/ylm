@@ -54,10 +54,51 @@ const TickerHook = {
 
     this.spacingBetweenMessages = 4; // Characters of spacing between messages
 
-    // Start the ticker - shift left and add character every 100ms
-    this.tickInterval = setInterval(() => this.tick(), 150);
+    // Start the ticker with dynamic speed
+    this.tickInterval = setInterval(() => this.tick(), this.getTickSpeed());
 
     console.log(`Ticker mounted: buffer width = ${this.viewportWidth} chars`);
+  },
+
+  getTickSpeed() {
+    // Calculate remaining characters in queue
+    const remainingChars = this.getRemainingChars();
+
+    // Piecewise constant speed based on queue size
+    if (remainingChars < 50) {
+      return 150; // Slow and readable
+    } else if (remainingChars < 100) {
+      return 70; // Medium speed
+    } else if (remainingChars < 200) {
+      return 48; // Medium speed
+    } else if (remainingChars < 300) {
+      return 35; // Fast
+    } else if (remainingChars < 400) {
+      return 20; // Faster
+    } else if (remainingChars < 600) {
+      return 12; // Faster
+    } else {
+      return 6; // Very fast - catch up mode
+    }
+  },
+
+  getRemainingChars() {
+    let total = 0;
+
+    // Count characters in current message
+    if (this.currentMessage) {
+      total += this.currentMessage.length;
+    }
+
+    // Count spacing remaining
+    total += this.spacesRemaining;
+
+    // Count all queued messages
+    for (const msg of this.messageQueue) {
+      total += msg.length + this.spacingBetweenMessages;
+    }
+
+    return total;
   },
 
   updated() {
@@ -122,6 +163,10 @@ const TickerHook = {
 
     // 4. Render buffer to DOM
     this.el.textContent = this.buffer.join("");
+
+    // 5. Adjust tick speed based on queue size
+    clearInterval(this.tickInterval);
+    this.tickInterval = setInterval(() => this.tick(), this.getTickSpeed());
   },
 
   destroyed() {

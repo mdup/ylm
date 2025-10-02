@@ -255,18 +255,6 @@ defmodule YlmWeb.PresenterLive do
                 </div>
               </div>
             </div>
-            
-    <!-- Participant list -->
-            <div class="space-y-2 max-h-64 overflow-y-auto">
-              <%= for participant <- @participants_by_status.understand do %>
-                <div class="bg-white rounded px-4 py-2 text-gray-800">
-                  {participant.name}
-                </div>
-              <% end %>
-              <%= if Enum.empty?(@participants_by_status.understand) do %>
-                <div class="text-gray-500 italic text-center">No responses yet</div>
-              <% end %>
-            </div>
           </div>
           
     <!-- You Lost Me Section -->
@@ -312,18 +300,6 @@ defmodule YlmWeb.PresenterLive do
                   </span>
                 </div>
               </div>
-            </div>
-            
-    <!-- Participant list -->
-            <div class="space-y-2 max-h-64 overflow-y-auto">
-              <%= for participant <- @participants_by_status.lost do %>
-                <div class="bg-white rounded px-4 py-2 text-gray-800">
-                  {participant.name}
-                </div>
-              <% end %>
-              <%= if Enum.empty?(@participants_by_status.lost) do %>
-                <div class="text-gray-500 italic text-center">No responses yet</div>
-              <% end %>
             </div>
           </div>
         </div>
