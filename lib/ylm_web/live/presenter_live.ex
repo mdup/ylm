@@ -76,6 +76,17 @@ defmodule YlmWeb.PresenterLive do
   end
 
   @impl true
+  def handle_info({:participant_left, _participant_id}, socket) do
+    # Get the updated session from the SessionManager
+    updated_session = SessionManager.get_session(socket.assigns.session.id)
+
+    {:noreply,
+     socket
+     |> assign(:session, updated_session)
+     |> assign(:participants_by_status, Sessions.get_participants_by_status(updated_session))}
+  end
+
+  @impl true
   def handle_info(_message, socket) do
     # Ignore other messages (like slide_changed which we already handled locally)
     {:noreply, socket}

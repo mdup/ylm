@@ -123,6 +123,9 @@ defmodule YlmWeb.ParticipantLive do
           # Subscribe to session updates
           PubSub.subscribe(Ylm.PubSub, "session:#{socket.assigns.session_id}")
 
+          # Register this participant process for monitoring
+          SessionManager.register_participant(socket.assigns.session_id, participant_id, self())
+
           # Get any previous response for the current slide
           initial_status =
             get_participant_status_for_slide(
