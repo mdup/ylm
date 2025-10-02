@@ -109,19 +109,22 @@ defmodule YlmWeb.ParticipantLive do
     if String.length(name) > 0 do
       # Join the session through SessionManager
       case SessionManager.join_session(socket.assigns.session_id, name) do
-        {:ok, _updated_session, participant_id} ->
+        {:ok, updated_session, participant_id} ->
           # Subscribe to session updates
           PubSub.subscribe(Ylm.PubSub, "session:#{socket.assigns.session_id}")
 
           # Register this participant process for monitoring
           SessionManager.register_participant(socket.assigns.session_id, participant_id, self())
 
+          # Get the current slide from the session
+          current_slide = updated_session.current_slide
+
           # Get any previous response for the current slide
           initial_status =
             get_participant_status_for_slide(
               socket.assigns.session_id,
               participant_id,
-              socket.assigns.current_slide
+              current_slide
             )
 
           # Notify presenter of new participant
@@ -135,6 +138,7 @@ defmodule YlmWeb.ParticipantLive do
            socket
            |> assign(:participant_id, participant_id)
            |> assign(:joined, true)
+           |> assign(:current_slide, current_slide)
            |> assign(:status, initial_status)
            |> assign(:message_text, "")
            |> assign(:page_title, "#{name} - YLM")}

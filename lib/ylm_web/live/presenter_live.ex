@@ -123,6 +123,22 @@ defmodule YlmWeb.PresenterLive do
   @impl true
   def render(assigns) do
     ~H"""
+    <!-- Message Ticker -->
+    <% recent_messages = Sessions.get_recent_messages(@session, 50)
+    messages_json = Jason.encode!(recent_messages) %>
+    <div
+      class="w-full bg-slate-900 overflow-hidden"
+      style="height: 4rem; line-height: 4rem;"
+    >
+      <div
+        id="ticker"
+        phx-hook="TickerHook"
+        data-messages={messages_json}
+        style="font-family: 'Courier New', monospace; font-weight: bold; font-size: 32px; color: white; white-space: pre; height: 100%;"
+      >
+      </div>
+    </div>
+
     <div class="min-h-screen bg-gray-100 p-8">
       <div class="max-w-7xl mx-auto">
         <div class="bg-white rounded-lg shadow-lg p-8 mb-8 relative">
@@ -345,22 +361,6 @@ defmodule YlmWeb.PresenterLive do
               Responded: <span class="font-bold text-2xl">{understand_count + lost_count}</span>
             <% end %>
           </p>
-        </div>
-      </div>
-      
-    <!-- Message Ticker -->
-      <% recent_messages = Sessions.get_recent_messages(@session, 50)
-      messages_json = Jason.encode!(recent_messages) %>
-      <div
-        class="fixed bottom-0 left-0 right-0 bg-slate-900 overflow-hidden z-50"
-        style="height: 4rem; line-height: 4rem;"
-      >
-        <div
-          id="ticker"
-          phx-hook="TickerHook"
-          data-messages={messages_json}
-          style="font-family: 'Courier New', monospace; font-weight: bold; font-size: 32px; color: white; white-space: pre; height: 100%;"
-        >
         </div>
       </div>
     </div>

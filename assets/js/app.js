@@ -52,7 +52,7 @@ const TickerHook = {
     this.spacesRemaining = 0; // Spaces to add after current message
     this.maxChars = 128;
 
-    this.spacingBetweenMessages = 15; // Characters of spacing between messages
+    this.spacingBetweenMessages = 4; // Characters of spacing between messages
 
     // Start the ticker - shift left and add character every 100ms
     this.tickInterval = setInterval(() => this.tick(), 150);
