@@ -55,7 +55,7 @@ const TickerHook = {
     this.spacingBetweenMessages = 15; // Characters of spacing between messages
 
     // Start the ticker - shift left and add character every 100ms
-    this.tickInterval = setInterval(() => this.tick(), 250);
+    this.tickInterval = setInterval(() => this.tick(), 150);
 
     console.log(`Ticker mounted: buffer width = ${this.viewportWidth} chars`);
   },
