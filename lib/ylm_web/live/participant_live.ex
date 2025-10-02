@@ -38,7 +38,7 @@ defmodule YlmWeb.ParticipantLive do
          |> assign(:message_cooldown_until, nil)
          |> assign(:session_exists, true)
          |> assign(:presenter_connected, presenter_connected)
-         |> assign(:page_title, if(presenter_connected, do: "Join Session - YLM", else: "Presentation Ended - YLM"))}
+         |> assign(:page_title, if(presenter_connected, do: "Join Session - YLM", else: "Presenter Disconnected - YLM"))}
     end
   end
 
@@ -120,23 +120,8 @@ defmodule YlmWeb.ParticipantLive do
       # Join the session through SessionManager
       case SessionManager.join_session(socket.assigns.session_id, name) do
         {:ok, _updated_session, participant_id} ->
-          require Logger
-          # Subscribe to session updates and presence
-          result = PubSub.subscribe(Ylm.PubSub, "session:#{socket.assigns.session_id}")
-          Logger.info("Participant #{name} subscribed to session:#{socket.assigns.session_id}, result: #{inspect(result)}")
-
-          # Track presence for this topic to receive diffs
-          YlmWeb.Presence.track(self(), "session:#{socket.assigns.session_id}", "participant:#{participant_id}", %{
-            name: name,
-            online_at: System.system_time(:second)
-          })
-          Logger.info("Participant #{name} tracking presence for session:#{socket.assigns.session_id}")
-
-          # Check if presenter is currently present
-          presence_list = YlmWeb.Presence.list("session:#{socket.assigns.session_id}")
-          Logger.info("Presence list for session #{socket.assigns.session_id}: #{inspect(presence_list)}")
-          presenter_present = Map.has_key?(presence_list, "presenter")
-          Logger.info("Presenter present: #{presenter_present}")
+          # Subscribe to session updates
+          PubSub.subscribe(Ylm.PubSub, "session:#{socket.assigns.session_id}")
 
           # Get any previous response for the current slide
           initial_status =
@@ -159,7 +144,6 @@ defmodule YlmWeb.ParticipantLive do
            |> assign(:joined, true)
            |> assign(:status, initial_status)
            |> assign(:message_text, "")
-           |> assign(:presenter_connected, presenter_present)
            |> assign(:page_title, "#{name} - YLM")}
 
         {:error, :session_not_found} ->
@@ -265,34 +249,11 @@ defmodule YlmWeb.ParticipantLive do
   end
 
   @impl true
-  def handle_info(%Phoenix.Socket.Broadcast{event: "presence_diff", payload: payload}, socket) do
-    require Logger
-    Logger.info("Received presence_diff for session #{socket.assigns.session_id}: #{inspect(payload)}")
-
-    # Check if presenter left
-    leaves = Map.get(payload, :leaves, %{})
-    if Map.has_key?(leaves, "presenter") do
-      Logger.info("Presenter left session #{socket.assigns.session_id}")
-
-      {:noreply,
-       socket
-       |> assign(:presenter_connected, false)
-       |> assign(:page_title, "Presentation Ended - YLM")}
-    else
-      Logger.info("Presence diff but presenter didn't leave")
-      {:noreply, socket}
-    end
-  end
-
-  @impl true
   def handle_info(:presenter_disconnected, socket) do
-    require Logger
-    Logger.info("Participant received presenter_disconnected message for session #{socket.assigns.session_id}")
-
     {:noreply,
      socket
      |> assign(:presenter_connected, false)
-     |> assign(:page_title, "Presentation Ended - YLM")}
+     |> assign(:page_title, "Presenter Disconnected - YLM")}
   end
 
   @impl true
@@ -341,15 +302,15 @@ defmodule YlmWeb.ParticipantLive do
         <%= if not @presenter_connected do %>
           <div class="bg-white rounded-lg shadow-xl p-8 max-w-md w-full">
             <div class="text-center">
-              <svg class="w-20 h-20 mx-auto mb-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              <svg class="w-16 h-16 mx-auto mb-4 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 5.636a9 9 0 010 12.728m0 0l-2.829-2.829m2.829 2.829L21 21M15.536 8.464a5 5 0 010 7.072m0 0l-2.829-2.829m-4.243 2.829a4.978 4.978 0 01-1.414-2.83m-1.414 5.658a9 9 0 01-2.167-9.238m7.824 2.167a1 1 0 111.414 1.414m-1.414-1.414L3 3" />
               </svg>
-              <h1 class="text-3xl font-bold text-gray-800 mb-4">Presentation Ended</h1>
+              <h1 class="text-3xl font-bold text-gray-800 mb-4">Presenter Disconnected</h1>
               <p class="text-gray-600 mb-4">
-                Thank you for participating in session <span class="font-mono font-bold text-green-600">{@session_id}</span>!
+                The presenter for session <span class="font-mono font-bold text-orange-600">{@session_id}</span> has disconnected.
               </p>
               <p class="text-sm text-gray-500">
-                The presenter has ended the session. Have a great day! 👋
+                The session is no longer active. Please wait for the presenter to start a new session.
               </p>
             </div>
           </div>
