@@ -71,7 +71,7 @@ const TickerHook = {
       if (!this.seenMessageIds.has(msg.id)) {
         this.seenMessageIds.add(msg.id);
         // Format message and replace all regular spaces with non-breaking spaces
-        const text = `"${msg.content.slice(0, this.maxChars).toUpperCase()}" -- ${msg.participant_name.toUpperCase()}`;
+        const text = `"${msg.content.slice(0, this.maxChars)}" -- ${msg.participant_name}`;
         const textWithNbsp = text.replace(/ /g, this.nbsp);
         this.messageQueue.push(textWithNbsp);
         console.log(
