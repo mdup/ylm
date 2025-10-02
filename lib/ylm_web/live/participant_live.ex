@@ -43,28 +43,18 @@ defmodule YlmWeb.ParticipantLive do
   end
 
   @impl true
-  def handle_event("update_name", %{"value" => name}, socket) when is_binary(name) do
+  def handle_event("update_name", %{"name" => name}, socket) do
     {:noreply, assign(socket, :participant_name, name)}
   end
 
   @impl true
-  def handle_event("update_name", %{"key" => _key, "value" => name}, socket) do
-    {:noreply, assign(socket, :participant_name, name)}
-  end
-
-  @impl true
-  def handle_event("update_message", %{"value" => message}, socket) do
+  def handle_event("update_message", %{"message" => message}, socket) do
     {:noreply, assign(socket, :message_text, message)}
   end
 
   @impl true
-  def handle_event("update_message", %{"key" => _key, "value" => message}, socket) do
-    {:noreply, assign(socket, :message_text, message)}
-  end
-
-  @impl true
-  def handle_event("send_message", _params, socket) do
-    message = String.trim(socket.assigns.message_text)
+  def handle_event("send_message", %{"message" => message}, socket) do
+    message = String.trim(message)
     now = DateTime.utc_now()
 
     # Check cooldown
@@ -113,8 +103,8 @@ defmodule YlmWeb.ParticipantLive do
   end
 
   @impl true
-  def handle_event("join", _params, socket) do
-    name = String.trim(socket.assigns.participant_name)
+  def handle_event("join", %{"name" => name}, socket) do
+    name = String.trim(name)
 
     if String.length(name) > 0 do
       # Join the session through SessionManager
@@ -321,7 +311,7 @@ defmodule YlmWeb.ParticipantLive do
         <%= if not @joined do %>
         <div class="bg-white rounded-lg shadow-xl p-8 max-w-md w-full">
           <h1 class="text-3xl font-bold text-gray-800 mb-6 text-center">Join Session</h1>
-          <form phx-submit="join" class="space-y-4">
+          <form phx-submit="join" phx-change="update_name" class="space-y-4">
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-2">
                 Your Name
@@ -330,7 +320,6 @@ defmodule YlmWeb.ParticipantLive do
                 type="text"
                 name="name"
                 value={@participant_name}
-                phx-keyup="update_name"
                 class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 placeholder="Enter your name"
                 required
@@ -417,7 +406,7 @@ defmodule YlmWeb.ParticipantLive do
               end
 
             button_disabled = String.trim(@message_text) == "" or cooldown_active? %>
-            <form phx-submit="send_message" class="space-y-3">
+            <form phx-submit="send_message" phx-change="update_message" class="space-y-3">
               <div>
                 <label class="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
                   Send a public message
@@ -444,7 +433,6 @@ defmodule YlmWeb.ParticipantLive do
                   type="text"
                   name="message"
                   value={@message_text}
-                  phx-keyup="update_message"
                   disabled={cooldown_active?}
                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
                   placeholder="Type your message..."
